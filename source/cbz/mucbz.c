@@ -211,6 +211,20 @@ cbz_load_page(fz_context *ctx, fz_document *doc_, int chapter, int number)
 	return (fz_page*)page;
 }
 
+int
+cbz_needs_password(fz_context *ctx, fz_document *doc_)
+{
+	cbz_document *doc = (cbz_document*)doc_;
+	return fz_archive_needs_password(ctx, doc->arch);
+}
+
+int
+cbz_authenticate_password(fz_context *ctx, fz_document *doc_, const char *password)
+{
+	cbz_document *doc = (cbz_document*)doc_;
+	return fz_archive_authenticate_password(ctx, doc->arch, password);
+}
+
 static int
 cbz_lookup_metadata(fz_context *ctx, fz_document *doc_, const char *key, char *buf, int size)
 {
@@ -231,6 +245,8 @@ cbz_open_document_with_stream(fz_context *ctx, fz_stream *file)
 	doc->super.count_pages = cbz_count_pages;
 	doc->super.load_page = cbz_load_page;
 	doc->super.lookup_metadata = cbz_lookup_metadata;
+	doc->super.needs_password = cbz_needs_password;
+	doc->super.authenticate_password = cbz_authenticate_password;
 
 	fz_try(ctx)
 	{

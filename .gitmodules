@@ -31,3 +31,6 @@
 [submodule "thirdparty/freeglut"]
 	path = thirdparty/freeglut
 	url = https://github.com/ArtifexSoftware/thirdparty-freeglut.git
+[submodule "thirdparty/minizip"]
+	path = thirdparty/minizip
+	url = https://github.com/nmoinvaz/minizip
