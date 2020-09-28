@@ -288,5 +288,7 @@ fz_archive *fz_new_archive_of_size(fz_context *ctx, fz_stream *file, int size);
 	((M*)Memento_label(fz_new_archive_of_size(C, F, sizeof(M)), #M))
 
 
+int fz_archive_needs_password(fz_context *ctx, fz_archive *zip);
+int fz_archive_authenticate_password(fz_context *ctx, fz_archive *zip, const char *password);
 
 #endif

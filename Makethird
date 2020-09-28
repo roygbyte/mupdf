@@ -47,6 +47,18 @@ endif
 
 include Makelists
 
+# ZIP AES cruft
+THIRD_SRC += thirdparty/minizip/aes/aescrypt.c
+THIRD_SRC += thirdparty/minizip/aes/aeskey.c
+THIRD_SRC += thirdparty/minizip/aes/aestab.c
+THIRD_SRC += thirdparty/minizip/aes/fileenc.c
+THIRD_SRC += thirdparty/minizip/aes/hmac.c
+THIRD_SRC += thirdparty/minizip/aes/pwd2key.c
+THIRD_SRC += thirdparty/minizip/aes/sha1.c
+CFLAGS += -Ithirdparty/zlib/contrib/minizip -Ithirdparty/minizip/aes
+$(OUT)/thirdparty/minizip/aes/%.o: thirdparty/minizip/aes/%.c
+	$(CC_CMD) $(LIB_CFLAGS)
+
 # --- FREETYPE 2 ---
 
 ifeq ($(USE_SYSTEM_FREETYPE),yes)

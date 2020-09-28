@@ -42,10 +42,26 @@
 
 #define ZIP_ENCRYPTED_FLAG 0x1
 
+#include "crypt.h"
+#include "fileenc.h"
+
+#define AES_METHOD          (99)
+#define AES_PWVERIFYSIZE    (2)
+#define AES_MAXSALTLENGTH   (16)
+#define AES_AUTHCODESIZE    (10)
+#define AES_HEADERSIZE      (11)
+#define AES_KEYSIZE(mode)   (64 + (mode * 64))
+
+#define KEY_LENGTH(mode)        (8 * (mode & 3) + 8)
+#define SALT_LENGTH(mode)       (4 * (mode & 3) + 4)
+#define MAC_LENGTH(mode)        (10)
+
+
 typedef struct
 {
 	char *name;
 	uint64_t offset, csize, usize;
+	int crypted;
 } zip_entry;
 
 typedef struct
@@ -54,6 +70,16 @@ typedef struct
 
 	int count;
 	zip_entry *entries;
+
+	int crypted;
+	char password[128];
+	unsigned long keys[3];     /* keys defining the pseudo-random sequence */
+	const z_crc_t *pcrc_32_tab;
+	unsigned long aes_encryption_mode;
+	unsigned long aes_compression_method;
+	unsigned long aes_version;
+	fcrypt_ctx aes_ctx;
+
 } fz_zip_archive;
 
 static void drop_zip_archive(fz_context *ctx, fz_archive *arch)
@@ -75,6 +101,7 @@ static void read_zip_dir_imp(fz_context *ctx, fz_zip_archive *zip, int64_t start
 	uint64_t csize, usize;
 	char *name = NULL;
 	size_t n;
+	int general;
 
 	fz_var(name);
 
@@ -147,7 +174,7 @@ static void read_zip_dir_imp(fz_context *ctx, fz_zip_archive *zip, int64_t start
 
 			(void) fz_read_uint16_le(ctx, file); /* version made by */
 			(void) fz_read_uint16_le(ctx, file); /* version to extract */
-			(void) fz_read_uint16_le(ctx, file); /* general */
+			general = fz_read_uint16_le(ctx, file); /* general */
 			(void) fz_read_uint16_le(ctx, file); /* method */
 			(void) fz_read_uint16_le(ctx, file); /* last mod file time */
 			(void) fz_read_uint16_le(ctx, file); /* last mod file date */
@@ -209,6 +236,14 @@ static void read_zip_dir_imp(fz_context *ctx, fz_zip_archive *zip, int64_t start
 			zip->entries[zip->count].csize = csize;
 			zip->entries[zip->count].usize = usize;
 			zip->entries[zip->count].name = name;
+
+			if (general & ZIP_ENCRYPTED_FLAG) {
+				zip->crypted = 1;
+				zip->entries[zip->count].crypted = 1;
+			} else {
+				zip->entries[zip->count].crypted = 0;
+			}
+
 			name = NULL;
 
 			zip->count++;
@@ -224,7 +259,9 @@ static int read_zip_entry_header(fz_context *ctx, fz_zip_archive *zip, zip_entry
 {
 	fz_stream *file = zip->super.file;
 	uint32_t sig;
-	int general, method, namelength, extralength;
+	int headerid, datasize, chk, general, method, modtime, crc32, namelength, extralength;
+	unsigned char source[12];
+	unsigned char crcbyte;
 
 	fz_seek(ctx, file, ent->offset, 0);
 
@@ -234,19 +271,67 @@ static int read_zip_entry_header(fz_context *ctx, fz_zip_archive *zip, zip_entry
 
 	(void) fz_read_uint16_le(ctx, file); /* version */
 	general = fz_read_uint16_le(ctx, file); /* general */
-	if (general & ZIP_ENCRYPTED_FLAG)
-		fz_throw(ctx, FZ_ERROR_GENERIC, "zip content is encrypted");
-
 	method = fz_read_uint16_le(ctx, file);
-	(void) fz_read_uint16_le(ctx, file); /* file time */
+	modtime = fz_read_uint16_le(ctx, file); /* file time */
 	(void) fz_read_uint16_le(ctx, file); /* file date */
-	(void) fz_read_uint32_le(ctx, file); /* crc-32 */
+	crc32 = fz_read_uint32_le(ctx, file); /* crc-32 */
 	(void) fz_read_uint32_le(ctx, file); /* csize */
 	(void) fz_read_uint32_le(ctx, file); /* usize */
 	namelength = fz_read_uint16_le(ctx, file);
 	extralength = fz_read_uint16_le(ctx, file);
 
-	fz_seek(ctx, file, namelength + extralength, 1);
+	fz_seek(ctx, file, namelength, 1);
+	if (general & ZIP_ENCRYPTED_FLAG) {
+		if (method == AES_METHOD) {
+			while (extralength > 0) {
+				headerid = fz_read_uint16_le(ctx, file);
+				datasize = fz_read_uint16_le(ctx, file);
+				if (headerid == 0x9901) {
+					zip->aes_version = fz_read_int16_le(ctx, file);
+					(void) fz_read_int16_le(ctx, file); /* "AE" */
+					zip->aes_encryption_mode = fz_read_byte(ctx, file);
+					zip->aes_compression_method = fz_read_int16_le(ctx, file);
+				}
+				extralength -= 2 + 2 + datasize;
+			}
+			if (zip->aes_encryption_mode) {
+				int i;
+				unsigned char passverifyread[AES_PWVERIFYSIZE];
+				unsigned char passverifycalc[AES_PWVERIFYSIZE];
+				unsigned char saltvalue[AES_MAXSALTLENGTH];
+				unsigned int saltlength;
+				saltlength = SALT_LENGTH(zip->aes_encryption_mode);
+				fz_read(ctx, file, saltvalue, saltlength);
+				fz_read(ctx, file, passverifyread, AES_PWVERIFYSIZE);
+				fcrypt_init(zip->aes_encryption_mode, (const unsigned char*)zip->password, strlen(zip->password),
+					saltvalue, passverifycalc, &zip->aes_ctx);
+				for (i = 0; i < AES_PWVERIFYSIZE; i++) {
+					if (passverifyread[i] != passverifycalc[i]) {
+						return -1;
+					}
+				}
+			}
+		} else {
+			int i;
+			fz_seek(ctx, file, extralength, 1);
+			zip->pcrc_32_tab = (const z_crc_t*)get_crc_table();
+			init_keys(zip->password, zip->keys, zip->pcrc_32_tab);
+			fz_read(ctx, file, source, 12);
+			for (i = 0; i < 12; i++) {
+				crcbyte = zdecode(zip->keys, zip->pcrc_32_tab, source[i]);
+			}
+			if (general & 0x8) {
+				chk = modtime;  // WTF? This is undocumented in the APPNOTE!
+			} else {
+				chk = crc32 >> 16;
+			}
+			if (chk >> 8 != crcbyte) {
+				return -1;
+			}
+		}
+	} else {
+		fz_seek(ctx, file, extralength, 1);
+	}
 
 	return method;
 }
@@ -305,6 +390,9 @@ static fz_stream *open_zip_entry(fz_context *ctx, fz_archive *arch, const char *
 		fz_throw(ctx, FZ_ERROR_GENERIC, "cannot find named zip archive entry");
 
 	method = read_zip_entry_header(ctx, zip, ent);
+	if (method == AES_METHOD) {
+		method = zip->aes_compression_method;
+	}
 	if (method == 0)
 		return fz_open_null_filter(ctx, file, ent->usize, fz_tell(ctx, file));
 	if (method == 8)
@@ -319,6 +407,7 @@ static fz_buffer *read_zip_entry(fz_context *ctx, fz_archive *arch, const char *
 	fz_buffer *ubuf;
 	unsigned char *cbuf = NULL;
 	int method;
+	int i;
 	z_stream z;
 	int code;
 	uint64_t len;
@@ -331,6 +420,10 @@ static fz_buffer *read_zip_entry(fz_context *ctx, fz_archive *arch, const char *
 		fz_throw(ctx, FZ_ERROR_GENERIC, "cannot find named zip archive entry");
 
 	method = read_zip_entry_header(ctx, zip, ent);
+	if (method == AES_METHOD) {
+		method = zip->aes_compression_method;
+	}
+
 	ubuf = fz_new_buffer(ctx, ent->usize + 1); /* +1 because many callers will add a terminating zero */
 
 	if (method == 0)
@@ -340,6 +433,15 @@ static fz_buffer *read_zip_entry(fz_context *ctx, fz_archive *arch, const char *
 			ubuf->len = fz_read(ctx, file, ubuf->data, ent->usize);
 			if (ubuf->len < (size_t)ent->usize)
 				fz_warn(ctx, "premature end of data in stored zip archive entry");
+
+			if (ent->crypted) {
+				if (zip->aes_encryption_mode) {
+					fcrypt_decrypt(ubuf->data, ent->usize, &zip->aes_ctx);
+				} else {
+					for(i = 0; i < (int)ent->usize; ++i)
+						ubuf->data[i] = zdecode(zip->keys, zip->pcrc_32_tab, ubuf->data[i]);
+				}
+			}
 		}
 		fz_catch(ctx)
 		{
@@ -355,6 +457,16 @@ static fz_buffer *read_zip_entry(fz_context *ctx, fz_archive *arch, const char *
 			cbuf = fz_malloc(ctx, ent->csize);
 
 			fz_read(ctx, file, cbuf, ent->csize);
+
+			if (ent->crypted) {
+				if (zip->aes_encryption_mode) {
+					fcrypt_decrypt(cbuf, ent->csize, &zip->aes_ctx);
+				} else {
+					for(i = 0; i < (int)ent->csize; ++i) {
+						cbuf[i] = zdecode(zip->keys, zip->pcrc_32_tab, cbuf[i]);
+					}
+				}
+			}
 
 			z.zalloc = fz_zlib_alloc;
 			z.zfree = fz_zlib_free;
@@ -400,6 +512,31 @@ static fz_buffer *read_zip_entry(fz_context *ctx, fz_archive *arch, const char *
 
 	fz_drop_buffer(ctx, ubuf);
 	fz_throw(ctx, FZ_ERROR_GENERIC, "unknown zip method: %d", method);
+}
+
+int fz_archive_needs_password(fz_context *ctx, fz_archive *arch)
+{
+	fz_zip_archive *zip;
+
+	if (strcmp(arch->format, "zip") != 0)
+		return 0;
+
+	zip = (fz_zip_archive *) arch;
+	return zip->crypted;
+}
+
+int fz_archive_authenticate_password(fz_context *ctx, fz_archive *arch, const char *password)
+{
+	fz_zip_archive *zip = (fz_zip_archive *) arch;
+	int i;
+
+	fz_strlcpy(zip->password, password, sizeof zip->password);
+	for (i = 0; i < zip->count; ++i) {
+		if (zip->entries[i].crypted) {
+			return read_zip_entry_header(ctx, zip, &zip->entries[i]) != -1;
+		}
+	}
+	return 1;
 }
 
 static int has_zip_entry(fz_context *ctx, fz_archive *arch, const char *name)
@@ -449,6 +586,10 @@ fz_open_zip_archive_with_stream(fz_context *ctx, fz_stream *file)
 		fz_throw(ctx, FZ_ERROR_GENERIC, "cannot recognize zip archive");
 
 	zip = fz_new_derived_archive(ctx, file, fz_zip_archive);
+	zip->crypted = 0;
+	zip->aes_compression_method = 0;
+	zip->aes_encryption_mode = 0;
+	zip->aes_version = 0;
 	zip->super.format = "zip";
 	zip->super.count_entries = count_zip_entries;
 	zip->super.list_entry = list_zip_entry;
