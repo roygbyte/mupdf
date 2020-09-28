@@ -34,6 +34,14 @@
 
 #include <assert.h>
 
+#ifdef EXTERNALFONTS
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
+#endif
+
 #include FT_FREETYPE_H
 #include FT_ADVANCES_H
 #include FT_MODULE_H
@@ -306,6 +314,15 @@ float fz_font_descender(fz_context *ctx, fz_font *font)
  * Freetype hooks
  */
 
+#ifdef EXTERNALFONTS
+struct fz_font_ext {
+	struct fz_font_ext *next;
+	const unsigned char *map;
+	int size;
+	char name[0];
+};
+#endif
+
 struct fz_font_context
 {
 	int ctx_refs;
@@ -322,7 +339,44 @@ struct fz_font_context
 	struct { fz_font *serif, *sans; } fallback[256];
 	fz_font *symbol1, *symbol2, *math, *music;
 	fz_font *emoji;
+
+#ifdef EXTERNALFONTS
+	struct fz_font_ext *external;
+#endif
 };
+
+#ifdef EXTERNALFONTS
+const unsigned char *fz_font_find_external(fz_context *ctx, const char *name, int *size)
+{
+	struct stat st;
+	struct fz_font_ext *fc;
+	int fd;
+	void *map = MAP_FAILED;
+
+	for (fc = ctx->font->external; fc; fc = fc->next)
+		if (!strcmp(name, fc->name))
+			return *size = fc->size, fc->map;
+
+	fd = open(name, O_RDONLY);
+	if (fd < 0)
+		return NULL;
+
+	if (!fstat(fd, &st))
+		map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	close(fd);
+	if (map == MAP_FAILED)
+		return NULL;
+
+	fc = fz_malloc_no_throw(ctx, strlen(name) + 1 + sizeof(*fc));
+	fc->next = ctx->font->external;
+	ctx->font->external = fc;
+
+	strcpy(fc->name, name);
+	fc->map = map;
+	fc->size = *size = st.st_size;
+	return fc->map;
+}
+#endif
 
 #undef __FTERRORS_H__
 #define FT_ERRORDEF(e, v, s) { (e), (s) },
@@ -372,6 +426,9 @@ void fz_new_font_context(fz_context *ctx)
 	ctx->font->ftmemory.alloc = ft_alloc;
 	ctx->font->ftmemory.free = ft_free;
 	ctx->font->ftmemory.realloc = ft_realloc;
+#ifdef EXTERNALFONTS
+	ctx->font->external = NULL;
+#endif
 }
 
 fz_font_context *
@@ -390,7 +447,14 @@ void fz_drop_font_context(fz_context *ctx)
 	if (fz_drop_imp(ctx, ctx->font, &ctx->font->ctx_refs))
 	{
 		int i;
-
+#ifdef EXTERNALFONTS
+		struct fz_font_ext *next, *fc;
+		for (fc = ctx->font->external; fc; fc = next) {
+			munmap((void*)fc->map, fc->size);
+			next = fc->next;
+			fz_free(ctx, fc);
+		}
+#endif
 		for (i = 0; i < (int)nelem(ctx->font->base14); ++i)
 			fz_drop_font(ctx, ctx->font->base14[i]);
 		for (i = 0; i < (int)nelem(ctx->font->cjk); ++i)
