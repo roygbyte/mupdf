@@ -78,6 +78,10 @@ typedef unsigned __int64 uint64_t;
 #endif
 #endif
 
+#ifdef FZ_DISABLE_ARM_ASM
+#undef ARCH_ARM
+#endif
+
 /**
 	Some differences in libc can be smoothed over
 */
