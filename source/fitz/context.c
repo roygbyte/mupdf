@@ -159,7 +159,7 @@ fz_new_context_imp(const fz_alloc_context *alloc, const fz_locks_context *locks,
 {
 	fz_context *ctx;
 
-	if (strcmp(version, FZ_VERSION))
+	if (version && strcmp(version, FZ_VERSION))
 	{
 		fprintf(stderr, "cannot create context: incompatible header (%s) and library (%s) versions\n", version, FZ_VERSION);
 		return NULL;
