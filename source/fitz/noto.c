@@ -182,6 +182,10 @@ const unsigned char *
 fz_lookup_cjk_font(fz_context *ctx, int ordering, int *size, int *subfont)
 {
 	*subfont = 0;
+#ifdef CUSTOM_CJK_FONT
+	return fz_font_find_external(ctx, CUSTOM_CJK_FONT, size);
+#endif
+
 #ifndef TOFU_CJK
 #ifndef TOFU_CJK_EXT
 #ifndef TOFU_CJK_LANG
