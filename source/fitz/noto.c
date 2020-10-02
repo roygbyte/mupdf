@@ -61,9 +61,22 @@ static const unsigned char *load_external_font(fz_context *ctx, const char *dir,
 	*lp = '.';
 	res = fz_font_find_external(ctx, buf, lp - buf, size);
 	if (!res) {
+#ifdef FALLBACKFONT
+		char buf2[1024];
+		strcpy(buf2, buf);
+#endif
 		strcpy(lp, ".ttf");
 		res = fz_font_find_external(ctx, buf, lp - buf, size);
+#ifdef FALLBACKFONT
+		if (!res) {
+			fz_warn(ctx, "Using %s in lieu of %s. Add the correct font if rendering is incorrect.\n",
+				FALLBACKFONT, buf2);
+			res = fz_font_find_external(ctx, FALLBACKFONT, sizeof(FALLBACKFONT)-1-4, size);
+		}
+#endif
 	}
+	if (!res)
+		fz_throw(ctx, FZ_ERROR_GENERIC, "Failed to load built in font %s", buf);
 	return res;
 }
 #define RETURN(dir,name) return load_external_font(ctx, #dir, #name, size)
