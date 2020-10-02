@@ -419,4 +419,6 @@ enum
 fz_pixmap *
 fz_warp_pixmap(fz_context *ctx, fz_pixmap *src, const fz_point points[4], int width, int height);
 
+fz_pixmap *fz_scale_pixmap(fz_context *ctx, fz_pixmap *src, float x, float y, float w, float h, const fz_irect *clip);
+
 #endif
