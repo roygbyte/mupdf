@@ -4,33 +4,41 @@
 [submodule "thirdparty/mujs"]
 	path = thirdparty/mujs
 	url = https://github.com/ArtifexSoftware/mujs.git
+	update = none
 [submodule "thirdparty/freetype"]
 	path = thirdparty/freetype
 	url = https://github.com/ArtifexSoftware/thirdparty-freetype2.git
+	update = none
 [submodule "thirdparty/gumbo-parser"]
 	path = thirdparty/gumbo-parser
 	url = https://github.com/ArtifexSoftware/thirdparty-gumbo-parser.git
 [submodule "thirdparty/harfbuzz"]
 	path = thirdparty/harfbuzz
 	url = https://github.com/ArtifexSoftware/thirdparty-harfbuzz.git
+	update = none
 [submodule "thirdparty/jpeg"]
 	path = thirdparty/libjpeg
 	url = https://github.com/ArtifexSoftware/thirdparty-libjpeg.git
+	update = none
 [submodule "thirdparty/lcms2"]
 	path = thirdparty/lcms2
 	url = https://github.com/ArtifexSoftware/thirdparty-lcms2.git
 [submodule "thirdparty/openjpeg"]
 	path = thirdparty/openjpeg
 	url = https://github.com/ArtifexSoftware/thirdparty-openjpeg.git
+	update = none
 [submodule "thirdparty/zlib"]
 	path = thirdparty/zlib
 	url = https://github.com/ArtifexSoftware/thirdparty-zlib.git
+	update = none
 [submodule "thirdparty/curl"]
 	path = thirdparty/curl
 	url = https://github.com/ArtifexSoftware/thirdparty-curl.git
+	update = none
 [submodule "thirdparty/freeglut"]
 	path = thirdparty/freeglut
 	url = https://github.com/ArtifexSoftware/thirdparty-freeglut.git
+	update = none
 [submodule "thirdparty/minizip"]
 	path = thirdparty/minizip
 	url = https://github.com/nmoinvaz/minizip
