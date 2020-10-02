@@ -54,11 +54,17 @@
 static const unsigned char *load_external_font(fz_context *ctx, const char *dir, const char *name, int *size)
 {
 	char buf[1024];
+	const unsigned char *res;
 	int n = fz_snprintf(buf, sizeof buf, "%s/%s/%s", EXTERNALFONTS, dir, name);
 	char *lp = buf, *p = buf + n - strlen(name);
 	while (*p++) if (*p == '_') *p = '-', lp = p;
 	*lp = '.';
-	return fz_font_find_external(ctx, buf, size);
+	res = fz_font_find_external(ctx, buf, size);
+	if (!res) {
+		strcpy(lp, ".ttf");
+		res = fz_font_find_external(ctx, buf, lp - buf, size);
+	}
+	return res;
 }
 #define RETURN(dir,name) return load_external_font(ctx, #dir, #name, size)
 #else
