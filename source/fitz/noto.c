@@ -81,7 +81,7 @@ static const unsigned char *load_external_font(fz_context *ctx, const char *dir,
 	char *lp = buf, *p = buf + n - strlen(name);
 	while (*p++) if (*p == '_') *p = '-', lp = p;
 	*lp = '.';
-	res = fz_font_find_external(ctx, buf, size);
+	res = fz_font_find_external(ctx, buf, lp - buf, size);
 	if (!res) {
 		strcpy(lp, ".ttf");
 		res = fz_font_find_external(ctx, buf, lp - buf, size);
