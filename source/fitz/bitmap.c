@@ -23,6 +23,7 @@
 #include "mupdf/fitz.h"
 
 #include <string.h>
+#include <limits.h>
 
 static const unsigned char pkm[256*8] =
 {

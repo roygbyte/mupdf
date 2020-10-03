@@ -28,6 +28,7 @@
 
 #include <string.h>
 #include <math.h>
+#include <limits.h>
 #include <assert.h>
 
 /* TODO: here or public? */
