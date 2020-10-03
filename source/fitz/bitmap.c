@@ -1,5 +1,6 @@
 #include "mupdf/fitz.h"
 
+#include <limits.h>
 #include <string.h>
 
 static const unsigned char pkm[256*8] =
@@ -269,7 +270,7 @@ fz_new_bitmap(fz_context *ctx, int w, int h, int n, int xres, int yres)
 
 	/* Stride is 32 bit aligned. We may want to make this 64 bit if we use SSE2 etc. */
 	int stride = ((n * w + 31) & ~31) >> 3;
-	if (h < 0 || ((size_t)h > (size_t)(SIZE_MAX / stride)))
+	if (h < 0 || (stride * h < stride))
 		fz_throw(ctx, FZ_ERROR_MEMORY, "bitmap too large");
 
 	bit = fz_malloc_struct(ctx, fz_bitmap);
