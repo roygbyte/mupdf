@@ -346,7 +346,7 @@ struct fz_font_context
 };
 
 #ifdef EXTERNALFONTS
-const unsigned char *fz_font_find_external(fz_context *ctx, const char *name, int nlen, int *size)
+const unsigned char *fz_font_find_external(fz_context *ctx, const char *name, int *size)
 {
 	struct stat st;
 	struct fz_font_ext *fc;
@@ -354,7 +354,7 @@ const unsigned char *fz_font_find_external(fz_context *ctx, const char *name, in
 	void *map = MAP_FAILED;
 
 	for (fc = ctx->font->external; fc; fc = fc->next)
-		if (!strncmp(name, fc->name, nlen))
+		if (!strcmp(name, fc->name))
 			return *size = fc->size, fc->map;
 
 	fd = open(name, O_RDONLY);
