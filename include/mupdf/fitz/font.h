@@ -701,5 +701,5 @@ struct fz_font
 	unsigned char digest[16];
 };
 
-const unsigned char *fz_font_find_external(fz_context *ctx, const char *name, int nlen, int *size);
+const unsigned char *fz_font_find_external(fz_context *ctx, const char *name, int *size);
 #endif
