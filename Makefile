@@ -181,16 +181,14 @@ generated/%.otf.c : %.otf $(HEXDUMP_EXE) ; $(QUIET_GEN) $(MKTGTDIR) ; $(HEXDUMP_
 generated/%.ttf.c : %.ttf $(HEXDUMP_EXE) ; $(QUIET_GEN) $(MKTGTDIR) ; $(HEXDUMP_EXE) -s $@ $<
 generated/%.ttc.c : %.ttc $(HEXDUMP_EXE) ; $(QUIET_GEN) $(MKTGTDIR) ; $(HEXDUMP_EXE) -s $@ $<
 
-ifeq ($(findstring EXTERNALFONTS,$(XCFLAGS)),)
 ifeq ($(HAVE_OBJCOPY),yes)
-    MUPDF_OBJ += $(FONT_BIN:%=$(OUT)/%.o)
-    $(OUT)/%.cff.o : %.cff ; $(OBJCOPY_CMD)
-    $(OUT)/%.otf.o : %.otf ; $(OBJCOPY_CMD)
-    $(OUT)/%.ttf.o : %.ttf ; $(OBJCOPY_CMD)
-    $(OUT)/%.ttc.o : %.ttc ; $(OBJCOPY_CMD)
-  else
-    MUPDF_OBJ += $(FONT_GEN:%.c=$(OUT)/%.o)
-  endif
+  MUPDF_OBJ += $(FONT_BIN:%=$(OUT)/%.o)
+  $(OUT)/%.cff.o : %.cff ; $(OBJCOPY_CMD)
+  $(OUT)/%.otf.o : %.otf ; $(OBJCOPY_CMD)
+  $(OUT)/%.ttf.o : %.ttf ; $(OBJCOPY_CMD)
+  $(OUT)/%.ttc.o : %.ttc ; $(OBJCOPY_CMD)
+else
+  MUPDF_OBJ += $(FONT_GEN:%.c=$(OUT)/%.o)
 endif
 
 generate: $(FONT_GEN)
