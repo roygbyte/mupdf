@@ -72,6 +72,10 @@
 #define NOTO_TANGUT 0
 #endif
 
+#ifdef NOBUILTINFONTS
+#define RETURN(FORGE,NAME) \
+	return *size = 0, NULL;
+#else
 #ifdef HAVE_OBJCOPY
 #define RETURN(FORGE,NAME) \
 	do { \
@@ -89,6 +93,7 @@
 	extern unsigned int _binary_##NAME##_size; \
 	return *size = _binary_##NAME##_size, _binary_##NAME; \
 	} while (0)
+#endif
 #endif
 
 const unsigned char *
