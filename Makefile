@@ -181,7 +181,7 @@ generated/%.otf.c : %.otf $(HEXDUMP_EXE) ; $(QUIET_GEN) $(MKTGTDIR) ; $(HEXDUMP_
 generated/%.ttf.c : %.ttf $(HEXDUMP_EXE) ; $(QUIET_GEN) $(MKTGTDIR) ; $(HEXDUMP_EXE) -s $@ $<
 generated/%.ttc.c : %.ttc $(HEXDUMP_EXE) ; $(QUIET_GEN) $(MKTGTDIR) ; $(HEXDUMP_EXE) -s $@ $<
 
-ifeq ($(findstring NOBUILTINFONTS,$(XCFLAGS)),)
+ifneq ($(builtinfonts),no)
 ifeq ($(HAVE_OBJCOPY),yes)
     MUPDF_OBJ += $(FONT_BIN:%=$(OUT)/%.o)
     $(OUT)/%.cff.o : %.cff ; $(OBJCOPY_CMD)
