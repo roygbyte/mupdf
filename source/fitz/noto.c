@@ -50,18 +50,6 @@
 #define NOTO_TANGUT 0
 #endif
 
-#ifdef EXTERNALFONTS
-static const unsigned char *load_external_font(fz_context *ctx, const char *dir, const char *name, int *size)
-{
-	char buf[1024];
-	int n = fz_snprintf(buf, sizeof buf, "%s/%s/%s", EXTERNALFONTS, dir, name);
-	char *lp = buf, *p = buf + n - strlen(name);
-	while (*p++) if (*p == '_') *p = '-', lp = p;
-	*lp = '.';
-	return fz_font_find_external(ctx, buf, size);
-}
-#define RETURN(dir,name) return load_external_font(ctx, #dir, #name, size)
-#else
 #ifdef HAVE_OBJCOPY
 #define RETURN(FORGE,NAME) \
 	do { \
@@ -79,7 +67,6 @@ static const unsigned char *load_external_font(fz_context *ctx, const char *dir,
 	extern unsigned int _binary_##NAME##_size; \
 	return *size = _binary_##NAME##_size, _binary_##NAME; \
 	} while (0)
-#endif
 #endif
 
 const unsigned char *
