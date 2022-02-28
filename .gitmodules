@@ -36,16 +36,18 @@
 [submodule "thirdparty/freeglut"]
 	path = thirdparty/freeglut
 	url = https://github.com/ArtifexSoftware/thirdparty-freeglut.git
+	update = none
 [submodule "thirdparty/tesseract"]
 	path = thirdparty/tesseract
 	url = https://github.com/ArtifexSoftware/thirdparty-tesseract.git
+	update = none
 [submodule "thirdparty/leptonica"]
 	path = thirdparty/leptonica
 	url = https://github.com/ArtifexSoftware/thirdparty-leptonica.git
+	update = none
 [submodule "thirdparty/extract"]
 	path = thirdparty/extract
 	url = https://github.com/ArtifexSoftware/extract.git
-	update = none
 [submodule "thirdparty/minizip"]
 	path = thirdparty/minizip
 	url = https://github.com/nmoinvaz/minizip
